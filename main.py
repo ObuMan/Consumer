@@ -1,3 +1,5 @@
+import json
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from azure.eventhub.aio import EventHubConsumerClient
 import asyncio
@@ -7,41 +9,41 @@ from azure.mgmt.iothub import IotHubClient
 
 app = FastAPI()
 
-credential = DefaultAzureCredential()
-subscription_id = '957bbb97-844e-40d6-8155-5dc5b9ddaf69'
-
-client = IotHubClient(credential, subscription_id)
-
-resource_group_name = 'smart-house'
-iot_hub_name = 'itestunique123452'
-
-policy_name = 'iothubowner'
-
-keys = client.iot_hub_resource.get_keys_for_key_name(resource_group_name, iot_hub_name, policy_name)
-
-iot_hub = client.iot_hub_resource.get(resource_group_name, iot_hub_name)
-
-properties = iot_hub.properties
-endpoints = properties.event_hub_endpoints
-endpoint = None
-
-if 'events' in endpoints:
-    endpoint = endpoints['events'].endpoint
-    print("Endpoint:", endpoint)
-else:
-    print("Event Hub endpoint not found.")
-
-connection_str = (
-    f"Endpoint={endpoint};"
-    f"SharedAccessKeyName={policy_name};"
-    f"SharedAccessKey={keys.primary_key};"
-    f"EntityPath={iot_hub_name}"
-)
-
-print("Connection String:", connection_str)
+# credential = DefaultAzureCredential()
+# subscription_id = '957bbb97-844e-40d6-8155-5dc5b9ddaf69'
+#
+# client = IotHubClient(credential, subscription_id)
+#
+# resource_group_name = 'smart-house'
+# iot_hub_name = 'itestunique123452'
+#
+# policy_name = 'iothubowner'
+#
+# keys = client.iot_hub_resource.get_keys_for_key_name(resource_group_name, iot_hub_name, policy_name)
+#
+# iot_hub = client.iot_hub_resource.get(resource_group_name, iot_hub_name)
+#
+# properties = iot_hub.properties
+# endpoints = properties.event_hub_endpoints
+# endpoint = None
+#
+# if 'events' in endpoints:
+#     endpoint = endpoints['events'].endpoint
+#     print("Endpoint:", endpoint)
+# else:
+#     print("Event Hub endpoint not found.")
+#
+# connection_str = (
+#     f"Endpoint={endpoint};"
+#     f"SharedAccessKeyName={policy_name};"
+#     f"SharedAccessKey={keys.primary_key};"
+#     f"EntityPath={iot_hub_name}"
+# )
+#
+# print("Connection String:", connection_str)
 
 async def handle_event_hub(websocket):
-    # connection_str = 'Endpoint=sb://iothub-ns-itestuniqu-58220205-ef5518ff0b.servicebus.windows.net/;SharedAccessKeyName=iothubowner;SharedAccessKey=LwC9nt7L2fMVMVC1NeoOZSAHSLtcICG7CAIoTPZYIbo=;EntityPath=itestunique123452'
+    connection_str = 'Endpoint=sb://iothub-ns-itestuniqu-58220205-ef5518ff0b.servicebus.windows.net/;SharedAccessKeyName=iothubowner;SharedAccessKey=LwC9nt7L2fMVMVC1NeoOZSAHSLtcICG7CAIoTPZYIbo=;EntityPath=itestunique123452'
     consumer_group = "$Default"
     eventhub_name = "itestunique123452"
 
@@ -54,8 +56,20 @@ async def handle_event_hub(websocket):
     async def on_event(partition_context, event):
         if event:
             event_data = event.body_as_str()
-            print(f"Received event: {event_data}")
-            await websocket.send_text(str(event))
+
+            # event_data_json = json.loads(event_data)
+
+            try:
+                event_data_json = json.loads(event_data)
+                print(f"Received event: {event_data_json}")
+
+                print(f"Received event: {event_data}")
+
+                await asyncio.sleep(1)
+
+                await websocket.send_text(str(event_data))
+            except json.JSONDecodeError:
+                print("Received data is not in JSON format, not sending.")
         else:
             print("No event received.")
 
